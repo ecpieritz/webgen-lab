@@ -1,3 +1,4 @@
+import { OPENROUTER_MODEL, OPENROUTER_REASONING_EFFORT } from "./constants";
 import { getOpenRouterConfiguration } from "./environment";
 import {
   OpenRouterApiError,
@@ -14,10 +15,10 @@ const OPENROUTER_CHAT_COMPLETIONS_URL =
   "https://openrouter.ai/api/v1/chat/completions";
 
 export interface OpenRouterChatCompletionRequest {
-  model: "openai/gpt-5";
+  model: typeof OPENROUTER_MODEL;
   messages: ChatMessage[];
   reasoning: {
-    effort: "medium";
+    effort: typeof OPENROUTER_REASONING_EFFORT;
   };
   stream: false;
 }
