@@ -1,13 +1,6 @@
-import { sendConversationMessage } from "@/features/chat/conversation-session-service";
-import {
-  ConversationSessionBusyError,
-  ConversationSessionNotFoundError,
-} from "@/features/chat/errors";
+import { handleConversationMessage } from "@/features/chat/conversation-message-handler";
 import { conversationMessageRequestSchema } from "@/features/chat/schemas";
-import {
-  apiErrorResponse,
-  createOpenRouterErrorResponse,
-} from "@/lib/http/api-error-response";
+import { apiErrorResponse } from "@/lib/http/api-error-response";
 
 interface SessionMessageRouteContext {
   params: Promise<{
@@ -45,38 +38,9 @@ export async function POST(
     });
   }
 
-  try {
-    const result = await sendConversationMessage(
-      sessionId,
-      parsedRequest.data.content,
-      request.signal,
-    );
-
-    return Response.json(result);
-  } catch (error) {
-    if (error instanceof ConversationSessionNotFoundError) {
-      return apiErrorResponse(404, {
-        code: "SESSION_NOT_FOUND",
-        message: "Conversation session not found.",
-      });
-    }
-
-    if (error instanceof ConversationSessionBusyError) {
-      return apiErrorResponse(409, {
-        code: "SESSION_BUSY",
-        message: "The conversation session is already processing a message.",
-      });
-    }
-
-    const openRouterErrorResponse = createOpenRouterErrorResponse(error);
-
-    if (openRouterErrorResponse) {
-      return openRouterErrorResponse;
-    }
-
-    return apiErrorResponse(500, {
-      code: "INTERNAL_SERVER_ERROR",
-      message: "An unexpected server error occurred.",
-    });
-  }
+  return handleConversationMessage(
+    sessionId,
+    parsedRequest.data.content,
+    request.signal,
+  );
 }

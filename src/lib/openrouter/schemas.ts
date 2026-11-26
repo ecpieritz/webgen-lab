@@ -2,15 +2,6 @@ import { z } from "zod";
 
 const reasoningDetailsSchema = z.array(z.record(z.string(), z.unknown()));
 
-const userMessageSchema = z
-  .object({
-    role: z.literal("user"),
-    content: z
-      .string()
-      .refine((content) => content.trim().length > 0, "Content is required."),
-  })
-  .strict();
-
 const assistantMessageSchema = z
   .object({
     role: z.literal("assistant"),
@@ -20,14 +11,6 @@ const assistantMessageSchema = z
     reasoning_details: reasoningDetailsSchema.optional(),
   })
   .passthrough();
-
-export const chatRouteRequestSchema = z
-  .object({
-    messages: z
-      .array(z.union([userMessageSchema, assistantMessageSchema]))
-      .min(1),
-  })
-  .strict();
 
 const openRouterUsageSchema = z
   .object({
@@ -57,8 +40,11 @@ export const openRouterChatCompletionResponseSchema = z
   .passthrough();
 
 export type ChatMessage =
-  z.infer<typeof userMessageSchema> | z.infer<typeof assistantMessageSchema>;
-export type ChatRouteRequest = z.infer<typeof chatRouteRequestSchema>;
+  | {
+      role: "user";
+      content: string;
+    }
+  | z.infer<typeof assistantMessageSchema>;
 export type OpenRouterChatCompletionResponse = z.infer<
   typeof openRouterChatCompletionResponseSchema
 >;

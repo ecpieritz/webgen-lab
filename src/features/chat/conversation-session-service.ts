@@ -2,9 +2,12 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
+import { ASSESSMENT_TURN_LIMIT } from "./constants";
 import {
+  ConversationInvalidAssistantResponseError,
   ConversationSessionBusyError,
   ConversationSessionNotFoundError,
+  ConversationTurnLimitReachedError,
 } from "./errors";
 import {
   OPENROUTER_MODEL,
@@ -16,7 +19,7 @@ import {
 } from "@/lib/openrouter/client";
 import type { ChatMessage } from "@/lib/openrouter/schemas";
 
-export type ConversationSessionStatus = "active" | "processing";
+export type ConversationSessionStatus = "active" | "processing" | "completed";
 
 export interface ConversationSession {
   id: string;
@@ -25,6 +28,8 @@ export interface ConversationSession {
     effort: typeof OPENROUTER_REASONING_EFFORT;
   };
   status: ConversationSessionStatus;
+  turnLimit: typeof ASSESSMENT_TURN_LIMIT;
+  completedTurns: number;
   messages: ChatMessage[];
   createdAt: string;
   updatedAt: string;
@@ -65,6 +70,8 @@ export function createConversationSession(): ConversationSession {
       effort: OPENROUTER_REASONING_EFFORT,
     },
     status: "active",
+    turnLimit: ASSESSMENT_TURN_LIMIT,
+    completedTurns: 0,
     messages: [],
     createdAt: timestamp,
     updatedAt: timestamp,
@@ -104,6 +111,13 @@ export async function sendConversationMessage(
     throw new ConversationSessionBusyError(sessionId);
   }
 
+  if (
+    session.status === "completed" ||
+    session.completedTurns >= session.turnLimit
+  ) {
+    throw new ConversationTurnLimitReachedError(sessionId);
+  }
+
   processingConversationSessionIds.add(sessionId);
   conversationSessionStore.set(sessionId, {
     ...session,
@@ -119,10 +133,24 @@ export async function sendConversationMessage(
 
   try {
     const exchange = await createChatCompletion(requestMessages, signal);
-    const assistantMessage = exchange.response.choices[0].message;
+    const choice = exchange.response.choices[0];
+    const assistantMessage = choice.message;
+
+    if (
+      choice.finish_reason !== "stop" ||
+      assistantMessage.content.trim().length === 0
+    ) {
+      throw new ConversationInvalidAssistantResponseError(
+        sessionId,
+        choice.finish_reason,
+      );
+    }
+
+    const completedTurns = session.completedTurns + 1;
     const updatedSession: ConversationSession = {
       ...session,
-      status: "active",
+      status: completedTurns >= session.turnLimit ? "completed" : "active",
+      completedTurns,
       messages: [...requestMessages, assistantMessage],
       updatedAt: new Date().toISOString(),
     };
@@ -136,7 +164,7 @@ export async function sendConversationMessage(
   } catch (error) {
     conversationSessionStore.set(sessionId, {
       ...session,
-      status: "active",
+      status: session.status,
       updatedAt: new Date().toISOString(),
     });
 

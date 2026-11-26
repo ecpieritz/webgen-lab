@@ -11,3 +11,20 @@ export class ConversationSessionBusyError extends Error {
     this.name = "ConversationSessionBusyError";
   }
 }
+
+export class ConversationTurnLimitReachedError extends Error {
+  constructor(public readonly sessionId: string) {
+    super(`Conversation session ${sessionId} has reached its turn limit.`);
+    this.name = "ConversationTurnLimitReachedError";
+  }
+}
+
+export class ConversationInvalidAssistantResponseError extends Error {
+  constructor(
+    public readonly sessionId: string,
+    public readonly finishReason: string | null,
+  ) {
+    super(`Conversation session ${sessionId} received an incomplete response.`);
+    this.name = "ConversationInvalidAssistantResponseError";
+  }
+}

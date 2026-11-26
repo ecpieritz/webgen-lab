@@ -1,9 +1,6 @@
-import {
-  apiErrorResponse,
-  createOpenRouterErrorResponse,
-} from "@/lib/http/api-error-response";
-import { createChatCompletion } from "@/lib/openrouter/client";
-import { chatRouteRequestSchema } from "@/lib/openrouter/schemas";
+import { handleConversationMessage } from "@/features/chat/conversation-message-handler";
+import { conversationChatRequestSchema } from "@/features/chat/schemas";
+import { apiErrorResponse } from "@/lib/http/api-error-response";
 
 export async function POST(request: Request): Promise<Response> {
   let requestPayload: unknown;
@@ -17,12 +14,12 @@ export async function POST(request: Request): Promise<Response> {
     });
   }
 
-  const parsedRequest = chatRouteRequestSchema.safeParse(requestPayload);
+  const parsedRequest = conversationChatRequestSchema.safeParse(requestPayload);
 
   if (!parsedRequest.success) {
     return apiErrorResponse(400, {
       code: "INVALID_REQUEST",
-      message: "The chat completion request is invalid.",
+      message: "The chat request is invalid.",
       issues: parsedRequest.error.issues.map((issue) => ({
         path: issue.path.join("."),
         message: issue.message,
@@ -30,23 +27,9 @@ export async function POST(request: Request): Promise<Response> {
     });
   }
 
-  try {
-    const exchange = await createChatCompletion(
-      parsedRequest.data.messages,
-      request.signal,
-    );
-
-    return Response.json(exchange);
-  } catch (error) {
-    const openRouterErrorResponse = createOpenRouterErrorResponse(error);
-
-    if (openRouterErrorResponse) {
-      return openRouterErrorResponse;
-    }
-
-    return apiErrorResponse(500, {
-      code: "INTERNAL_SERVER_ERROR",
-      message: "An unexpected server error occurred.",
-    });
-  }
+  return handleConversationMessage(
+    parsedRequest.data.sessionId,
+    parsedRequest.data.content,
+    request.signal,
+  );
 }
