@@ -16,29 +16,14 @@ import {
 import { createChatCompletion } from "@/lib/openrouter/client";
 import { getOpenRouterAttemptArtifacts } from "@/lib/openrouter/errors";
 import type { ChatMessage } from "@/lib/openrouter/schemas";
-import type { OpenRouterChatExchange } from "@/lib/openrouter/types";
 import { persistOpenRouterAttempt } from "@/lib/storage/experiment-artifact-store";
+import type { ConversationMessageResult, ConversationSession } from "./types";
 
-export type ConversationSessionStatus = "active" | "processing" | "completed";
-
-export interface ConversationSession {
-  id: string;
-  model: typeof OPENROUTER_MODEL;
-  reasoning: {
-    effort: typeof OPENROUTER_REASONING_EFFORT;
-  };
-  status: ConversationSessionStatus;
-  turnLimit: typeof ASSESSMENT_TURN_LIMIT;
-  completedTurns: number;
-  messages: ChatMessage[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ConversationMessageResult {
-  session: ConversationSession;
-  exchange: OpenRouterChatExchange;
-}
+export type {
+  ConversationMessageResult,
+  ConversationSession,
+  ConversationSessionStatus,
+} from "./types";
 
 interface ConversationSessionGlobalState {
   conversationSessionStore?: Map<string, ConversationSession>;
