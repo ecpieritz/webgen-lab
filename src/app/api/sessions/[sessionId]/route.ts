@@ -12,7 +12,7 @@ export async function GET(
   context: SessionRouteContext,
 ): Promise<Response> {
   const { sessionId } = await context.params;
-  const session = getConversationSession(sessionId);
+  const session = await getConversationSession(sessionId);
 
   if (!session) {
     return apiErrorResponse(404, {

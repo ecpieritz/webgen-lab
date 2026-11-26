@@ -4,6 +4,14 @@ import { randomUUID } from "node:crypto";
 
 import { ASSESSMENT_TURN_LIMIT } from "./constants";
 import {
+  acquireConversationSession,
+  completeConversationTurn,
+  findConversationSession,
+  findConversationSessions,
+  insertConversationSession,
+  releaseConversationSession,
+} from "./conversation-session-store";
+import {
   ConversationInvalidAssistantResponseError,
   ConversationSessionBusyError,
   ConversationSessionNotFoundError,
@@ -25,28 +33,7 @@ export type {
   ConversationSessionStatus,
 } from "./types";
 
-interface ConversationSessionGlobalState {
-  conversationSessionStore?: Map<string, ConversationSession>;
-  processingConversationSessionIds?: Set<string>;
-}
-
-const globalState = globalThis as typeof globalThis &
-  ConversationSessionGlobalState;
-
-const conversationSessionStore =
-  globalState.conversationSessionStore ??
-  new Map<string, ConversationSession>();
-const processingConversationSessionIds =
-  globalState.processingConversationSessionIds ?? new Set<string>();
-
-globalState.conversationSessionStore = conversationSessionStore;
-globalState.processingConversationSessionIds = processingConversationSessionIds;
-
-function cloneSession(session: ConversationSession): ConversationSession {
-  return structuredClone(session);
-}
-
-export function createConversationSession(): ConversationSession {
+export async function createConversationSession(): Promise<ConversationSession> {
   const timestamp = new Date().toISOString();
   const session: ConversationSession = {
     id: randomUUID(),
@@ -62,23 +49,19 @@ export function createConversationSession(): ConversationSession {
     updatedAt: timestamp,
   };
 
-  conversationSessionStore.set(session.id, session);
-
-  return cloneSession(session);
+  return insertConversationSession(session);
 }
 
-export function getConversationSession(
+export async function getConversationSession(
   sessionId: string,
-): ConversationSession | undefined {
-  const session = conversationSessionStore.get(sessionId);
-
-  return session ? cloneSession(session) : undefined;
+): Promise<ConversationSession | undefined> {
+  return findConversationSession(sessionId);
 }
 
-export function listConversationSessions(): ConversationSession[] {
-  return Array.from(conversationSessionStore.values(), cloneSession).sort(
-    (left, right) => right.createdAt.localeCompare(left.createdAt),
-  );
+export async function listConversationSessions(): Promise<
+  ConversationSession[]
+> {
+  return findConversationSessions();
 }
 
 export async function sendConversationMessage(
@@ -86,29 +69,21 @@ export async function sendConversationMessage(
   content: string,
   signal?: AbortSignal,
 ): Promise<ConversationMessageResult> {
-  const session = conversationSessionStore.get(sessionId);
+  const session = await acquireConversationSession(sessionId);
 
   if (!session) {
-    throw new ConversationSessionNotFoundError(sessionId);
-  }
+    const currentSession = await findConversationSession(sessionId);
 
-  if (processingConversationSessionIds.has(sessionId)) {
-    throw new ConversationSessionBusyError(sessionId);
-  }
+    if (!currentSession) {
+      throw new ConversationSessionNotFoundError(sessionId);
+    }
 
-  if (
-    session.status === "completed" ||
-    session.completedTurns >= session.turnLimit
-  ) {
+    if (currentSession.status === "processing") {
+      throw new ConversationSessionBusyError(sessionId);
+    }
+
     throw new ConversationTurnLimitReachedError(sessionId);
   }
-
-  processingConversationSessionIds.add(sessionId);
-  conversationSessionStore.set(sessionId, {
-    ...session,
-    status: "processing",
-    updatedAt: new Date().toISOString(),
-  });
 
   const userMessage = {
     role: "user",
@@ -135,18 +110,17 @@ export async function sendConversationMessage(
     }
 
     const completedTurns = session.completedTurns + 1;
-    const updatedSession: ConversationSession = {
+    const nextSession: ConversationSession = {
       ...session,
       status: completedTurns >= session.turnLimit ? "completed" : "active",
       completedTurns,
       messages: [...requestMessages, assistantMessage],
       updatedAt: new Date().toISOString(),
     };
-
-    conversationSessionStore.set(sessionId, updatedSession);
+    const updatedSession = await completeConversationTurn(nextSession);
 
     return {
-      session: cloneSession(updatedSession),
+      session: updatedSession,
       exchange,
     };
   } catch (error) {
@@ -161,14 +135,12 @@ export async function sendConversationMessage(
       }
     }
 
-    conversationSessionStore.set(sessionId, {
-      ...session,
-      status: session.status,
-      updatedAt: new Date().toISOString(),
-    });
+    try {
+      await releaseConversationSession(sessionId);
+    } catch (releaseError) {
+      errorToThrow = releaseError;
+    }
 
     throw errorToThrow;
-  } finally {
-    processingConversationSessionIds.delete(sessionId);
   }
 }

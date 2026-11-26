@@ -2,6 +2,8 @@ import { handleConversationMessage } from "@/features/chat/conversation-message-
 import { conversationMessageRequestSchema } from "@/features/chat/schemas";
 import { apiErrorResponse } from "@/lib/http/api-error-response";
 
+export const maxDuration = 300;
+
 interface SessionMessageRouteContext {
   params: Promise<{
     sessionId: string;

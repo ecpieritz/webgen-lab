@@ -2,6 +2,8 @@ import { handleConversationMessage } from "@/features/chat/conversation-message-
 import { conversationChatRequestSchema } from "@/features/chat/schemas";
 import { apiErrorResponse } from "@/lib/http/api-error-response";
 
+export const maxDuration = 300;
+
 export async function POST(request: Request): Promise<Response> {
   let requestPayload: unknown;
 

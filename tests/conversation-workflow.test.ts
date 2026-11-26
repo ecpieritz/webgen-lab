@@ -10,6 +10,7 @@ import {
   ConversationExportNotReadyError,
   ConversationTurnLimitReachedError,
 } from "@/features/chat/errors";
+import type { ConversationSession } from "@/features/chat/types";
 import { createChatCompletion } from "@/lib/openrouter/client";
 import type { ChatMessage } from "@/lib/openrouter/schemas";
 import type { OpenRouterChatCompletionResult } from "@/lib/openrouter/types";
@@ -17,6 +18,49 @@ import {
   persistConversationExport,
   persistOpenRouterAttempt,
 } from "@/lib/storage/experiment-artifact-store";
+
+const inMemorySessions = vi.hoisted(
+  () => new Map<string, ConversationSession>(),
+);
+
+vi.mock("@/features/chat/conversation-session-store", () => ({
+  insertConversationSession: vi.fn(async (session: ConversationSession) => {
+    inMemorySessions.set(session.id, structuredClone(session));
+    return structuredClone(session);
+  }),
+  findConversationSession: vi.fn(async (sessionId: string) => {
+    const session = inMemorySessions.get(sessionId);
+    return session ? structuredClone(session) : undefined;
+  }),
+  findConversationSessions: vi.fn(async () =>
+    Array.from(inMemorySessions.values(), (session) =>
+      structuredClone(session),
+    ),
+  ),
+  acquireConversationSession: vi.fn(async (sessionId: string) => {
+    const session = inMemorySessions.get(sessionId);
+
+    if (!session || session.status !== "active") return undefined;
+
+    const processingSession: ConversationSession = {
+      ...session,
+      status: "processing",
+    };
+    inMemorySessions.set(sessionId, processingSession);
+    return structuredClone(processingSession);
+  }),
+  completeConversationTurn: vi.fn(async (session: ConversationSession) => {
+    inMemorySessions.set(session.id, structuredClone(session));
+    return structuredClone(session);
+  }),
+  releaseConversationSession: vi.fn(async (sessionId: string) => {
+    const session = inMemorySessions.get(sessionId);
+
+    if (session?.status === "processing") {
+      inMemorySessions.set(sessionId, { ...session, status: "active" });
+    }
+  }),
+}));
 
 vi.mock("@/lib/openrouter/client", () => ({
   createChatCompletion: vi.fn(),
@@ -33,6 +77,7 @@ const persistOpenRouterAttemptMock = vi.mocked(persistOpenRouterAttempt);
 
 describe("conversation and export workflows", () => {
   beforeEach(() => {
+    inMemorySessions.clear();
     createChatCompletionMock.mockReset();
     persistConversationExportMock.mockReset();
     persistOpenRouterAttemptMock.mockReset();
@@ -41,7 +86,7 @@ describe("conversation and export workflows", () => {
   });
 
   it("completes exactly three controlled turns and rejects a fourth", async () => {
-    const session = createConversationSession();
+    const session = await createConversationSession();
     const requests = [
       "Build the initial landing page.",
       "Improve the responsive navigation.",
@@ -85,7 +130,7 @@ describe("conversation and export workflows", () => {
   });
 
   it("keeps export locked until all three turns are complete", async () => {
-    const session = createConversationSession();
+    const session = await createConversationSession();
 
     await expect(exportConversation(session.id)).rejects.toBeInstanceOf(
       ConversationExportNotReadyError,
@@ -149,7 +194,7 @@ async function completeConversation(): Promise<{
   messages: ChatMessage[];
   sessionId: string;
 }> {
-  const session = createConversationSession();
+  const session = await createConversationSession();
 
   for (let turn = 1; turn <= session.turnLimit; turn += 1) {
     createChatCompletionMock.mockResolvedValueOnce(createCompletion(turn));

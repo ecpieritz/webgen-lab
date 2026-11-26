@@ -3,12 +3,14 @@ import {
   listConversationSessions,
 } from "@/features/chat/conversation-session-service";
 
-export function GET(): Response {
-  return Response.json({ sessions: listConversationSessions() });
+export async function GET(): Promise<Response> {
+  const sessions = await listConversationSessions();
+
+  return Response.json({ sessions });
 }
 
-export function POST(): Response {
-  const session = createConversationSession();
+export async function POST(): Promise<Response> {
+  const session = await createConversationSession();
 
   return Response.json(
     { session },

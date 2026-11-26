@@ -26,7 +26,7 @@ function hasValidMessageOrder(messages: ChatMessage[]): boolean {
 }
 
 export async function exportConversation(sessionId: string): Promise<string> {
-  const session = getConversationSession(sessionId);
+  const session = await getConversationSession(sessionId);
 
   if (!session) {
     throw new ConversationSessionNotFoundError(sessionId);
