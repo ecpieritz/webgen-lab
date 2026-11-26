@@ -13,11 +13,11 @@ import {
   OPENROUTER_MODEL,
   OPENROUTER_REASONING_EFFORT,
 } from "@/lib/openrouter/constants";
-import {
-  createChatCompletion,
-  type OpenRouterChatExchange,
-} from "@/lib/openrouter/client";
+import { createChatCompletion } from "@/lib/openrouter/client";
+import { getOpenRouterAttemptArtifacts } from "@/lib/openrouter/errors";
 import type { ChatMessage } from "@/lib/openrouter/schemas";
+import type { OpenRouterChatExchange } from "@/lib/openrouter/types";
+import { persistOpenRouterAttempt } from "@/lib/storage/experiment-artifact-store";
 
 export type ConversationSessionStatus = "active" | "processing" | "completed";
 
@@ -132,7 +132,10 @@ export async function sendConversationMessage(
   const requestMessages = [...session.messages, userMessage];
 
   try {
-    const exchange = await createChatCompletion(requestMessages, signal);
+    const completion = await createChatCompletion(requestMessages, signal);
+    await persistOpenRouterAttempt(sessionId, completion.artifacts);
+
+    const { exchange } = completion;
     const choice = exchange.response.choices[0];
     const assistantMessage = choice.message;
 
@@ -162,13 +165,24 @@ export async function sendConversationMessage(
       exchange,
     };
   } catch (error) {
+    let errorToThrow: unknown = error;
+    const artifacts = getOpenRouterAttemptArtifacts(error);
+
+    if (artifacts) {
+      try {
+        await persistOpenRouterAttempt(sessionId, artifacts);
+      } catch (storageError) {
+        errorToThrow = storageError;
+      }
+    }
+
     conversationSessionStore.set(sessionId, {
       ...session,
       status: session.status,
       updatedAt: new Date().toISOString(),
     });
 
-    throw error;
+    throw errorToThrow;
   } finally {
     processingConversationSessionIds.delete(sessionId);
   }

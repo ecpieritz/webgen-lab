@@ -11,6 +11,7 @@ import {
   apiErrorResponse,
   createOpenRouterErrorResponse,
 } from "@/lib/http/api-error-response";
+import { ExperimentArtifactStorageError } from "@/lib/storage/errors";
 
 export async function handleConversationMessage(
   sessionId: string,
@@ -47,6 +48,13 @@ export async function handleConversationMessage(
       return apiErrorResponse(502, {
         code: "OPENROUTER_INCOMPLETE_RESPONSE",
         message: "OpenRouter returned an incomplete assistant response.",
+      });
+    }
+
+    if (error instanceof ExperimentArtifactStorageError) {
+      return apiErrorResponse(500, {
+        code: "EXPERIMENT_STORAGE_FAILED",
+        message: "Could not persist the experiment artifacts.",
       });
     }
 

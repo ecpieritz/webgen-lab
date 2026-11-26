@@ -1,37 +1,24 @@
-import { OPENROUTER_MODEL, OPENROUTER_REASONING_EFFORT } from "./constants";
 import { getOpenRouterConfiguration } from "./environment";
 import {
   OpenRouterApiError,
   OpenRouterNetworkError,
   OpenRouterResponseError,
 } from "./errors";
-import {
-  openRouterChatCompletionResponseSchema,
-  type ChatMessage,
-  type OpenRouterChatCompletionResponse,
-} from "./schemas";
+import { openRouterChatCompletionResponseSchema } from "./schemas";
+import type {
+  OpenRouterAttemptArtifacts,
+  OpenRouterChatCompletionRequest,
+  OpenRouterChatCompletionResult,
+} from "./types";
+import type { ChatMessage } from "./schemas";
 
 const OPENROUTER_CHAT_COMPLETIONS_URL =
   "https://openrouter.ai/api/v1/chat/completions";
 
-export interface OpenRouterChatCompletionRequest {
-  model: typeof OPENROUTER_MODEL;
-  messages: ChatMessage[];
-  reasoning: {
-    effort: typeof OPENROUTER_REASONING_EFFORT;
-  };
-  stream: false;
-}
-
-export interface OpenRouterChatExchange {
-  request: OpenRouterChatCompletionRequest;
-  response: OpenRouterChatCompletionResponse;
-}
-
 export async function createChatCompletion(
   messages: ChatMessage[],
   signal?: AbortSignal,
-): Promise<OpenRouterChatExchange> {
+): Promise<OpenRouterChatCompletionResult> {
   const configuration = getOpenRouterConfiguration();
   const payload: OpenRouterChatCompletionRequest = {
     model: configuration.model,
@@ -40,6 +27,16 @@ export async function createChatCompletion(
       effort: configuration.reasoningEffort,
     },
     stream: false,
+  };
+  const requestBody = JSON.stringify(payload);
+  const requestArtifacts: OpenRouterAttemptArtifacts = {
+    request: {
+      body: requestBody,
+      contentType: "application/json",
+      method: "POST",
+      sentAt: new Date().toISOString(),
+      url: OPENROUTER_CHAT_COMPLETIONS_URL,
+    },
   };
 
   let upstreamResponse: Response;
@@ -53,28 +50,57 @@ export async function createChatCompletion(
         "X-OpenRouter-Metadata": "enabled",
         "X-OpenRouter-Title": "WebGen Lab",
       },
-      body: JSON.stringify(payload),
+      body: requestBody,
       cache: "no-store",
       signal,
     });
   } catch (error) {
-    throw new OpenRouterNetworkError(error);
+    throw new OpenRouterNetworkError(error, requestArtifacts);
   }
 
-  const responseText = await upstreamResponse.text();
+  let responseText: string;
+
+  try {
+    responseText = await upstreamResponse.text();
+  } catch (error) {
+    throw new OpenRouterNetworkError(error, requestArtifacts);
+  }
+
   let responsePayload: unknown;
+  let isJson = true;
 
   try {
     responsePayload = JSON.parse(responseText) as unknown;
   } catch {
+    responsePayload = responseText;
+    isJson = false;
+  }
+
+  const artifacts: OpenRouterAttemptArtifacts = {
+    ...requestArtifacts,
+    response: {
+      body: responseText,
+      contentType: upstreamResponse.headers.get("content-type"),
+      isJson,
+      receivedAt: new Date().toISOString(),
+      status: upstreamResponse.status,
+    },
+  };
+
+  if (!isJson) {
     throw new OpenRouterResponseError(
       "OpenRouter returned a non-JSON response.",
-      responseText,
+      responsePayload,
+      artifacts,
     );
   }
 
   if (!upstreamResponse.ok) {
-    throw new OpenRouterApiError(upstreamResponse.status, responsePayload);
+    throw new OpenRouterApiError(
+      upstreamResponse.status,
+      responsePayload,
+      artifacts,
+    );
   }
 
   const parsedResponse =
@@ -84,11 +110,15 @@ export async function createChatCompletion(
     throw new OpenRouterResponseError(
       "OpenRouter returned an invalid chat completion response.",
       responsePayload,
+      artifacts,
     );
   }
 
   return {
-    request: payload,
-    response: parsedResponse.data,
+    artifacts,
+    exchange: {
+      request: payload,
+      response: parsedResponse.data,
+    },
   };
 }
