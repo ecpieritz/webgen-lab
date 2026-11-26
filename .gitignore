@@ -29,9 +29,21 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
 
-# env files (can opt-in for committing if needed)
-.env*
+# environment variables
+.env
+.env.*
+!.env.example
+
+# confidential assessment files
+docs/private/
+docs/WebGen-Candidate-EvaluationTask.pdf
+WebGen-Candidate-EvaluationTask.pdf
+
+# generated experiment artifacts
+experiments/
+submissions/
 
 # vercel
 .vercel
