@@ -28,3 +28,17 @@ export class ConversationInvalidAssistantResponseError extends Error {
     this.name = "ConversationInvalidAssistantResponseError";
   }
 }
+
+export class ConversationExportNotReadyError extends Error {
+  constructor(public readonly sessionId: string) {
+    super(`Conversation session ${sessionId} is not ready for export.`);
+    this.name = "ConversationExportNotReadyError";
+  }
+}
+
+export class ConversationIntegrityError extends Error {
+  constructor(public readonly sessionId: string) {
+    super(`Conversation session ${sessionId} has an invalid message history.`);
+    this.name = "ConversationIntegrityError";
+  }
+}

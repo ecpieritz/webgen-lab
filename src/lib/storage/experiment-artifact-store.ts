@@ -1,6 +1,6 @@
 import "server-only";
 
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve, sep } from "node:path";
 
 import { ExperimentArtifactStorageError } from "./errors";
@@ -13,6 +13,15 @@ const EXPERIMENTS_DIRECTORY = resolve(process.cwd(), "experiments");
 
 function serializeMetadata(metadata: Record<string, unknown>): string {
   return `${JSON.stringify(metadata, null, 2)}\n`;
+}
+
+function isFileExistsError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "EEXIST"
+  );
 }
 
 async function getNextAttemptNumber(
@@ -121,6 +130,43 @@ export async function persistOpenRouterAttempt(
       }),
       { encoding: "utf8", flag: "wx" },
     );
+  } catch (error) {
+    if (error instanceof ExperimentArtifactStorageError) {
+      throw error;
+    }
+
+    throw new ExperimentArtifactStorageError(sessionId, error);
+  }
+}
+
+export async function persistConversationExport(
+  sessionId: string,
+  content: string,
+): Promise<void> {
+  try {
+    const sessionDirectory = getSessionDirectory(sessionId);
+    const conversationPath = resolve(sessionDirectory, "conversation.json");
+
+    await mkdir(sessionDirectory, { recursive: true });
+
+    try {
+      await writeFile(conversationPath, content, {
+        encoding: "utf8",
+        flag: "wx",
+      });
+    } catch (error) {
+      if (!isFileExistsError(error)) {
+        throw error;
+      }
+
+      const existingContent = await readFile(conversationPath, "utf8");
+
+      if (existingContent !== content) {
+        throw new Error(
+          "The existing conversation export does not match the current session.",
+        );
+      }
+    }
   } catch (error) {
     if (error instanceof ExperimentArtifactStorageError) {
       throw error;
