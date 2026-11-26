@@ -157,8 +157,8 @@ export function ExperimentWorkspace() {
   }
 
   return (
-    <main className="min-h-screen bg-grid text-zinc-100">
-      <header className="border-b border-white/10 bg-zinc-950/80 px-4 py-3 backdrop-blur-xl sm:px-6">
+    <main className="min-h-screen bg-grid text-zinc-100 lg:flex lg:h-dvh lg:flex-col lg:overflow-hidden">
+      <header className="shrink-0 border-b border-white/10 bg-zinc-950/80 px-4 py-3 backdrop-blur-xl sm:px-6">
         <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
             <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-cyan-300 font-mono text-sm font-black text-zinc-950 shadow-[0_0_28px_rgba(103,232,249,0.18)]">
@@ -180,8 +180,8 @@ export function ExperimentWorkspace() {
         </div>
       </header>
 
-      <div className="mx-auto grid min-h-[calc(100vh-65px)] max-w-[1600px] grid-cols-[minmax(0,1fr)] lg:grid-cols-[250px_minmax(0,1fr)] xl:grid-cols-[250px_minmax(0,1fr)_300px]">
-        <aside className="min-w-0 border-b border-white/10 bg-zinc-950/45 p-4 lg:border-r lg:border-b-0">
+      <div className="mx-auto grid w-full max-w-[1600px] grid-cols-[minmax(0,1fr)] lg:min-h-0 lg:flex-1 lg:grid-cols-[250px_minmax(0,1fr)] lg:overflow-hidden xl:grid-cols-[250px_minmax(0,1fr)_300px]">
+        <aside className="min-w-0 border-b border-white/10 bg-zinc-950/45 p-4 lg:h-full lg:overflow-y-auto lg:border-r lg:border-b-0">
           <div className="flex min-w-0 items-center justify-between gap-3 lg:block">
             <div>
               <p className="font-mono text-xs font-semibold tracking-[0.18em] text-zinc-500 uppercase">
@@ -248,8 +248,8 @@ export function ExperimentWorkspace() {
           </div>
         </aside>
 
-        <section className="flex min-h-[680px] min-w-0 flex-col">
-          <div className="border-b border-white/10 px-4 py-4 sm:px-6">
+        <section className="flex min-h-[680px] min-w-0 flex-col lg:h-full lg:min-h-0 lg:overflow-hidden">
+          <div className="shrink-0 border-b border-white/10 px-4 py-4 sm:px-6">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="font-mono text-xs text-zinc-500">
@@ -270,7 +270,7 @@ export function ExperimentWorkspace() {
             </div>
           </div>
 
-          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-6 sm:px-6">
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-6 sm:px-6">
             {!selectedSession ? (
               <EmptyConversation
                 isCreating={isCreating}
@@ -310,7 +310,7 @@ export function ExperimentWorkspace() {
             <div ref={conversationEndRef} />
           </div>
 
-          <div className="border-t border-white/10 bg-zinc-950/65 p-4 backdrop-blur-xl sm:p-6">
+          <div className="shrink-0 border-t border-white/10 bg-zinc-950/65 p-4 backdrop-blur-xl sm:p-6">
             {error ? (
               <div
                 role="alert"
@@ -394,7 +394,7 @@ export function ExperimentWorkspace() {
           </div>
         </section>
 
-        <aside className="hidden border-l border-white/10 bg-zinc-950/45 p-5 xl:block">
+        <aside className="hidden border-l border-white/10 bg-zinc-950/45 p-5 xl:block xl:h-full xl:overflow-y-auto">
           <p className="font-mono text-xs font-semibold tracking-[0.18em] text-zinc-500 uppercase">
             Inspector
           </p>
