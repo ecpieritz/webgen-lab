@@ -64,6 +64,17 @@ DATABASE_URL=postgresql://user:password@host/database
 
 Do not rename the key to a `NEXT_PUBLIC_` variable. OpenRouter credentials must never be exposed to browser code. Environment files are ignored by Git except for `.env.example`.
 
+## Environment variables
+
+| Variable                      | Required | Description                                          |
+| ----------------------------- | -------- | ---------------------------------------------------- |
+| `OPENROUTER_API_KEY`          | Yes      | Server-side credential used to call OpenRouter       |
+| `OPENROUTER_MODEL`            | Yes      | Must be exactly `openai/gpt-5`                       |
+| `OPENROUTER_REASONING_EFFORT` | Yes      | Must be exactly `medium`                             |
+| `DATABASE_URL`                | Yes      | PostgreSQL connection string used by the Neon driver |
+
+The application validates the OpenRouter configuration at runtime. It does not accept a different model or reasoning effort for the first assessment profile.
+
 ## Local development
 
 Start the development server:
@@ -75,6 +86,60 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) in a browser.
 
 If `.env.local` changes while the server is running, restart the development server so Next.js reloads the environment.
+
+## Deploying to Vercel
+
+### 1. Import the repository
+
+Create or select a Vercel project connected to this repository. Vercel detects the Next.js application and uses the existing `npm run build` command.
+
+### 2. Connect Neon Postgres
+
+From the Vercel project:
+
+1. Open **Storage** or the **Marketplace**.
+2. Install the Neon Postgres integration.
+3. Connect it to the project for the **Production** and **Preview** environments.
+4. Use `DATABASE` as the custom variable prefix so the generated connection variable is named `DATABASE_URL`.
+5. Keep the connection variable marked as sensitive.
+
+The application creates these tables automatically during its first database operation:
+
+- `webgen_conversation_sessions`
+- `webgen_experiment_attempts`
+- `webgen_conversation_exports`
+
+No manual SQL migration is required for the initial schema. The connected database user must be allowed to create tables and indexes.
+
+### 3. Configure OpenRouter
+
+Add the following environment variables under **Settings → Environment Variables** and scope them to **Production**:
+
+```env
+OPENROUTER_API_KEY=your_openrouter_api_key
+OPENROUTER_MODEL=openai/gpt-5
+OPENROUTER_REASONING_EFFORT=medium
+```
+
+Add them to **Preview** as well if preview deployments need to run real experiments. Every deployment with access to the key can consume OpenRouter credits.
+
+### 4. Redeploy
+
+Environment variable and integration changes only apply to new deployments. Redeploy the latest commit after connecting Neon or changing any variable.
+
+After the deployment succeeds:
+
+1. Open the deployment URL.
+2. Create a new experiment.
+3. Submit the first request once.
+4. Confirm that the response appears and the counter advances to `1 / 3`.
+5. Continue with the remaining turns only after reviewing each response.
+
+Sessions created by an older deployment that used in-memory storage are not migrated. Always create a new experiment after deploying the Postgres-backed version.
+
+### 5. Protect the deployment
+
+The application does not currently implement user authentication. A public deployment exposes endpoints that can create experiments and consume OpenRouter credits. Use Vercel Deployment Protection or another access-control layer, and rotate any credential that has been exposed in source code, logs, screenshots, or messages.
 
 ## Running an experiment
 
@@ -197,11 +262,19 @@ Verify that the API key is active, has sufficient credits, and can access `opena
 
 ### Export remains unavailable
 
-Export is enabled only after three valid assistant responses. Failed requests do not count as turns and may be safely inspected in the experiment artifact directories.
+Export is enabled only after three valid assistant responses. Failed requests do not count as turns. Their original request and response artifacts remain available in `webgen_experiment_attempts` when an upstream response was received and persistence succeeded.
 
 ### The database cannot be initialized
 
 Confirm that `DATABASE_URL` is available in the current environment and points to a writable PostgreSQL database. Environment changes only apply to new Vercel deployments, so redeploy the application after connecting or updating Neon.
+
+### The API returns `EXPERIMENT_STORAGE_FAILED`
+
+Confirm that the deployed commit contains the Postgres-backed storage implementation and that `DATABASE_URL` is scoped to the deployment environment. This error on an older deployment can indicate that it is still trying to write to the read-only Vercel Function filesystem.
+
+### A session remains in `processing`
+
+The session is marked as `processing` before the OpenRouter request starts. Handled API and persistence errors return it to `active`. If the Function is terminated unexpectedly while waiting for the model, inspect the session row in Neon before attempting another request.
 
 ## Project structure
 
@@ -234,6 +307,7 @@ tests/                   Automated workflow and client tests
 - TypeScript
 - Tailwind CSS
 - Zod
+- Neon Postgres
 - Vitest
 - ESLint
 - Prettier
