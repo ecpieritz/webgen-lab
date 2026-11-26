@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebGen Lab — Project Explanation</title>
+    <style>
+      :root {
+        --ink: #101a24;
+        --muted: #526171;
+        --line: #d8e1e7;
+        --paper: #f8fbfc;
+        --white: #ffffff;
+        --cyan: #36d7ea;
+        --cyan-dark: #087f94;
+        --mint: #58e5b4;
+        --navy: #071017;
+        --slate: #13232e;
+        --amber: #ffbd66;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; background: #dce5e9; color: var(--ink); }
+      body { font-family: "Segoe UI", Arial, Helvetica, sans-serif; }
+
+      @page { size: A4; margin: 0; }
+      @media print {
+        body { background: transparent; }
+        .page { box-shadow: none !important; margin: 0 !important; }
+      }
+
+      .page {
+        position: relative;
+        width: 210mm;
+        min-height: 297mm;
+        margin: 8mm auto;
+        padding: 17mm 18mm 16mm;
+        overflow: hidden;
+        background: var(--paper);
+        page-break-after: always;
+        box-shadow: 0 10px 32px rgba(14, 31, 43, 0.16);
+      }
+      .page:last-child { page-break-after: auto; }
+      body:has(.page:target) .page:not(:target) { display: none; }
+      .page.dark { background: var(--navy); color: #edf7fa; }
+      .page-number {
+        position: absolute;
+        right: 18mm;
+        bottom: 8mm;
+        color: #7d8b96;
+        font: 600 8.5pt/1 "Cascadia Mono", Consolas, monospace;
+        letter-spacing: .08em;
+      }
+      .footer-note {
+        position: absolute;
+        left: 18mm;
+        bottom: 8mm;
+        color: #7d8b96;
+        font-size: 8pt;
+      }
+
+      h1, h2, h3, p { margin-top: 0; }
+      h1 { font-size: 36pt; line-height: 1.02; letter-spacing: -.04em; }
+      h2 { margin-bottom: 5mm; font-size: 23pt; line-height: 1.1; letter-spacing: -.025em; }
+      h3 { margin-bottom: 2mm; font-size: 12pt; line-height: 1.2; }
+      p, li { font-size: 10.2pt; line-height: 1.48; }
+      p { margin-bottom: 3.2mm; }
+      ul, ol { margin: 1.5mm 0 0; padding-left: 5mm; }
+      li { margin-bottom: 1.5mm; }
+      a { color: var(--cyan-dark); text-decoration: none; }
+      .dark a { color: var(--cyan); }
+      code, .mono { font-family: "Cascadia Mono", Consolas, monospace; }
+      code { font-size: .91em; color: #0f6e80; }
+      .dark code { color: var(--cyan); }
+      .eyebrow {
+        margin-bottom: 3mm;
+        color: var(--cyan-dark);
+        font: 700 8.5pt/1.2 "Cascadia Mono", Consolas, monospace;
+        letter-spacing: .18em;
+        text-transform: uppercase;
+      }
+      .dark .eyebrow { color: var(--cyan); }
+      .lead { font-size: 13.5pt; line-height: 1.5; color: #344654; }
+      .dark .lead { color: #b8cbd4; }
+      .small { font-size: 8.7pt; line-height: 1.45; color: var(--muted); }
+      .dark .small { color: #8fa5af; }
+      .rule { height: 1px; margin: 5mm 0; background: var(--line); }
+      .dark .rule { background: rgba(255,255,255,.13); }
+
+      .brand { display: flex; align-items: center; gap: 3mm; }
+      .mark {
+        display: grid;
+        width: 11mm;
+        height: 11mm;
+        place-items: center;
+        border-radius: 3mm;
+        background: var(--cyan);
+        color: var(--navy);
+        font: 900 12pt/1 "Cascadia Mono", Consolas, monospace;
+      }
+      .brand-name { font-size: 12pt; font-weight: 750; }
+      .brand-sub { color: #7e919b; font: 8pt/1.3 "Cascadia Mono", Consolas, monospace; }
+
+      .cover-grid {
+        display: grid;
+        grid-template-columns: 1.35fr .65fr;
+        gap: 12mm;
+        align-items: end;
+        margin-top: 38mm;
+      }
+      .cover-accent {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 76mm;
+        height: 100%;
+        opacity: .55;
+        background:
+          linear-gradient(90deg, transparent 0 20%, rgba(54,215,234,.08) 20% 21%, transparent 21% 45%, rgba(54,215,234,.08) 45% 46%, transparent 46%),
+          linear-gradient(rgba(54,215,234,.08) 1px, transparent 1px);
+        background-size: auto, 100% 15mm;
+      }
+      .cover-meta { border-left: 1px solid rgba(255,255,255,.16); padding-left: 6mm; }
+      .meta-label { margin-top: 5mm; color: #70848e; font: 700 7.8pt/1 "Cascadia Mono", Consolas, monospace; letter-spacing: .12em; text-transform: uppercase; }
+      .meta-value { margin-top: 1.5mm; color: #d8e8ee; font-size: 10pt; line-height: 1.4; }
+      .cover-band {
+        position: absolute;
+        left: 18mm;
+        right: 18mm;
+        bottom: 26mm;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4mm;
+      }
+      .cover-stat { border-top: 2px solid var(--cyan); padding-top: 3mm; }
+      .cover-stat strong { display: block; color: #ecfbff; font-size: 16pt; }
+      .cover-stat span { color: #77909b; font-size: 8.5pt; }
+
+      .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 5mm; }
+      .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 4mm; }
+      .card {
+        padding: 4.5mm;
+        border: 1px solid var(--line);
+        border-radius: 3mm;
+        background: var(--white);
+      }
+      .card.accent { border-top: 2px solid var(--cyan-dark); }
+      .card.mint { border-top: 2px solid #19a978; }
+      .card.amber { border-top: 2px solid #d58b22; }
+      .card p:last-child, .card ul:last-child { margin-bottom: 0; }
+      .kpi { font-size: 22pt; font-weight: 800; letter-spacing: -.035em; }
+      .kpi-label { color: var(--muted); font-size: 8.5pt; line-height: 1.3; }
+      .tag {
+        display: inline-block;
+        margin: 0 1.5mm 1.5mm 0;
+        padding: 1.4mm 2.2mm;
+        border: 1px solid #bcdbe1;
+        border-radius: 999px;
+        background: #ecf9fb;
+        color: #146b79;
+        font: 700 7.8pt/1 "Cascadia Mono", Consolas, monospace;
+      }
+
+      .callout {
+        margin: 4mm 0;
+        padding: 4mm 5mm;
+        border-left: 3px solid var(--cyan-dark);
+        background: #eaf7f9;
+      }
+      .callout strong { color: #075f70; }
+
+      .architecture {
+        display: grid;
+        grid-template-columns: 1fr 10mm 1fr 10mm 1fr;
+        gap: 0;
+        align-items: stretch;
+        margin: 5mm 0 6mm;
+      }
+      .node {
+        min-height: 32mm;
+        padding: 4mm;
+        border: 1px solid #b8d2d8;
+        border-radius: 3mm;
+        background: #fff;
+      }
+      .node .node-id { color: var(--cyan-dark); font: 700 8pt/1 "Cascadia Mono", Consolas, monospace; }
+      .node h3 { margin-top: 2mm; }
+      .node p { margin: 0; font-size: 8.6pt; color: var(--muted); }
+      .arrow { display: grid; place-items: center; color: var(--cyan-dark); font-size: 18pt; }
+      .arch-lower { grid-template-columns: 1fr 10mm 1fr; width: 70%; margin: 0 auto; }
+
+      .flow { margin-top: 4mm; }
+      .step { display: grid; grid-template-columns: 13mm 1fr; gap: 4mm; margin-bottom: 3mm; }
+      .step-num {
+        display: grid;
+        width: 10mm;
+        height: 10mm;
+        place-items: center;
+        border-radius: 50%;
+        background: var(--slate);
+        color: #fff;
+        font: 700 8pt/1 "Cascadia Mono", Consolas, monospace;
+      }
+      .step h3 { margin: .5mm 0 1mm; }
+      .step p { margin: 0; font-size: 9.2pt; color: var(--muted); }
+
+      .schema { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4mm; margin: 5mm 0; }
+      .table-card { overflow: hidden; border: 1px solid #cfdbe1; border-radius: 3mm; background: #fff; }
+      .table-title { padding: 3mm 3.5mm; background: var(--slate); color: #fff; font: 700 8pt/1.2 "Cascadia Mono", Consolas, monospace; }
+      .field { padding: 2mm 3.5mm; border-top: 1px solid #e2e8eb; color: #41525f; font: 8pt/1.25 "Cascadia Mono", Consolas, monospace; }
+      .field strong { color: #0b7083; }
+
+      .endpoint { display: grid; grid-template-columns: 21mm 41mm 1fr; align-items: start; padding: 2.4mm 0; border-bottom: 1px solid var(--line); }
+      .endpoint:last-child { border-bottom: 0; }
+      .method { font: 800 8pt/1.3 "Cascadia Mono", Consolas, monospace; color: #087d90; }
+      .path { font: 8pt/1.3 "Cascadia Mono", Consolas, monospace; }
+      .endpoint span:last-child { color: var(--muted); font-size: 8.7pt; line-height: 1.35; }
+
+      .timeline { position: relative; margin: 5mm 0 2mm 4mm; padding-left: 8mm; border-left: 2px solid #b8d9df; }
+      .turn { position: relative; margin-bottom: 5mm; }
+      .turn::before { content: ""; position: absolute; left: -11.1mm; top: 1mm; width: 5mm; height: 5mm; border: 2px solid var(--paper); border-radius: 50%; background: var(--cyan-dark); }
+      .turn-label { color: var(--cyan-dark); font: 800 8pt/1 "Cascadia Mono", Consolas, monospace; text-transform: uppercase; letter-spacing: .1em; }
+      .turn h3 { margin: 1.5mm 0 1mm; }
+      .turn p { margin: 0; color: var(--muted); font-size: 9.2pt; }
+
+      .screenshot-frame { margin: 4mm 0; padding: 2.5mm; border-radius: 3mm; background: #0a1218; box-shadow: 0 5mm 12mm rgba(9, 21, 28, .18); }
+      .screenshot-frame img { display: block; width: 100%; border-radius: 1.8mm; }
+      .caption { margin-top: 2mm; color: var(--muted); font-size: 7.8pt; line-height: 1.35; }
+
+      .check { color: #0d9568; font-weight: 800; }
+      .warn { color: #af6910; font-weight: 800; }
+      .checklist { list-style: none; padding: 0; }
+      .checklist li { position: relative; padding-left: 5mm; }
+      .checklist li::before { content: "✓"; position: absolute; left: 0; color: #0b9a69; font-weight: 900; }
+
+      .command {
+        margin: 2mm 0 3mm;
+        padding: 3mm 4mm;
+        border-radius: 2mm;
+        background: var(--slate);
+        color: #e9f8fb;
+        font: 8.5pt/1.45 "Cascadia Mono", Consolas, monospace;
+        white-space: pre-wrap;
+      }
+      .source-row { display: grid; grid-template-columns: 25mm 1fr; gap: 3mm; margin-bottom: 2.5mm; }
+      .source-row strong { font-size: 8.5pt; }
+      .source-row span { font-size: 8.5pt; line-height: 1.4; }
+
+      .back-link {
+        position: absolute;
+        top: 16mm;
+        right: 18mm;
+        padding: 2mm 3mm;
+        border: 1px solid #bfd4da;
+        border-radius: 999px;
+        background: #fff;
+        color: #136b7a;
+        font: 700 7.5pt/1 "Cascadia Mono", Consolas, monospace;
+        letter-spacing: .04em;
+      }
+      .toc-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 4mm;
+        margin-top: 6mm;
+      }
+      .toc-button {
+        display: grid;
+        grid-template-columns: 11mm 1fr 9mm;
+        gap: 3mm;
+        min-height: 28mm;
+        align-items: center;
+        padding: 4mm;
+        border: 1px solid #c7d9df;
+        border-top: 2px solid var(--cyan-dark);
+        border-radius: 3mm;
+        background: #fff;
+        color: var(--ink);
+        text-decoration: none;
+      }
+      .toc-button:nth-child(3n + 2) { border-top-color: #19a978; }
+      .toc-button:nth-child(3n) { border-top-color: #d58b22; }
+      .toc-button.wide { grid-column: 1 / -1; }
+      .toc-index {
+        display: grid;
+        width: 9mm;
+        height: 9mm;
+        place-items: center;
+        border-radius: 2.5mm;
+        background: var(--slate);
+        color: #fff;
+        font: 800 8pt/1 "Cascadia Mono", Consolas, monospace;
+      }
+      .toc-copy strong { display: block; margin-bottom: 1.5mm; font-size: 10.2pt; }
+      .toc-copy span { display: block; color: var(--muted); font-size: 7.8pt; line-height: 1.4; }
+      .toc-page { color: var(--cyan-dark); font: 800 9pt/1 "Cascadia Mono", Consolas, monospace; text-align: right; }
+      .toc-hint {
+        display: inline-flex;
+        align-items: center;
+        gap: 2mm;
+        margin-top: 5mm;
+        padding: 2mm 3mm;
+        border-radius: 999px;
+        background: #e8f7f9;
+        color: #176a78;
+        font: 700 7.8pt/1 "Cascadia Mono", Consolas, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="page dark" id="page-1">
+      <div class="cover-accent"></div>
+      <div class="brand">
+        <div class="mark">W</div>
+        <div>
+          <div class="brand-name">WebGen Lab</div>
+          <div class="brand-sub">Controlled experiment workspace</div>
+        </div>
+      </div>
+
+      <div class="cover-grid">
+        <div>
+          <div class="eyebrow">Technical project explanation</div>
+          <h1>A reproducible laboratory for AI-driven web development</h1>
+          <p class="lead">Architecture, experiment lifecycle, persistence model, integrity controls, and the three-turn Flowboard case study.</p>
+        </div>
+        <div class="cover-meta">
+          <div class="meta-label">Repository</div>
+          <div class="meta-value">github.com/ecpieritz/<br />webgen-lab</div>
+          <div class="meta-label">Production</div>
+          <div class="meta-value">webgen-lab.vercel.app</div>
+          <div class="meta-label">Reviewed</div>
+          <div class="meta-value">26 November 2026</div>
+          <div class="meta-label">Revision</div>
+          <div class="meta-value mono">79140a7</div>
+        </div>
+      </div>
+
+      <div class="cover-band">
+        <div class="cover-stat"><strong>3</strong><span>human-controlled turns</span></div>
+        <div class="cover-stat"><strong>6</strong><span>messages in a completed export</span></div>
+        <div class="cover-stat"><strong>3</strong><span>durable artifact groups</span></div>
+      </div>
+      <div class="page-number">01 / 11</div>
+    </section>
+
+    <section class="page" id="page-2">
+      <div class="eyebrow">Contents — Click to navigate</div>
+      <h2>Topics and subtopics</h2>
+      <p class="lead">Use the buttons below to jump directly to a section. Every internal page includes a return button for fast navigation back to this summary.</p>
+
+      <nav class="toc-grid" aria-label="Document contents">
+        <a class="toc-button" href="#page-3"><span class="toc-index">01</span><span class="toc-copy"><strong>Executive summary</strong><span>Project purpose · Core idea · Technology profile</span></span><span class="toc-page">03</span></a>
+        <a class="toc-button" href="#page-4"><span class="toc-index">02</span><span class="toc-copy"><strong>System architecture</strong><span>Application layers · Client/server boundaries · Security</span></span><span class="toc-page">04</span></a>
+        <a class="toc-button" href="#page-5"><span class="toc-index">03</span><span class="toc-copy"><strong>Controlled lifecycle</strong><span>Session states · Turn validation · Failure handling</span></span><span class="toc-page">05</span></a>
+        <a class="toc-button" href="#page-6"><span class="toc-index">04</span><span class="toc-copy"><strong>Persistence and integrity</strong><span>Database schema · Concurrency · Export contract</span></span><span class="toc-page">06</span></a>
+        <a class="toc-button" href="#page-7"><span class="toc-index">05</span><span class="toc-copy"><strong>Application surface</strong><span>API routes · Validation · Request/response evidence</span></span><span class="toc-page">07</span></a>
+        <a class="toc-button" href="#page-8"><span class="toc-index">06</span><span class="toc-copy"><strong>Attached experiment</strong><span>Flowboard turns · Interpretation · JSON value</span></span><span class="toc-page">08</span></a>
+        <a class="toc-button" href="#page-9"><span class="toc-index">07</span><span class="toc-copy"><strong>Interface and UX</strong><span>Experiment rail · Conversation canvas · Inspector</span></span><span class="toc-page">09</span></a>
+        <a class="toc-button" href="#page-10"><span class="toc-index">08</span><span class="toc-copy"><strong>Quality, deployment, security</strong><span>Automated tests · Production topology · Risks</span></span><span class="toc-page">10</span></a>
+        <a class="toc-button wide" href="#page-11"><span class="toc-index">09</span><span class="toc-copy"><strong>Operation and conclusion</strong><span>Local setup · Experiment run · Recommended next steps · References</span></span><span class="toc-page">11</span></a>
+      </nav>
+
+      <div class="toc-hint">↗ Click any topic button to open its page</div>
+      <div class="footer-note">Interactive table of contents</div><div class="page-number">02 / 11</div>
+    </section>
+
+    <section class="page" id="page-3">
+      <a class="back-link" href="#page-2">↑ Contents</a>
+      <div class="eyebrow">01 — Executive summary</div>
+      <h2>What the project actually is</h2>
+      <p class="lead"><strong>WebGen Lab is not the Flowboard task manager.</strong> It is the controlled environment that asked an AI model to design Flowboard over three successive prompts and preserved the resulting evidence.</p>
+
+      <div class="callout">
+        <strong>Core idea.</strong> Turn an otherwise informal model conversation into a bounded, inspectable experiment: fixed configuration, explicit human review, durable artifacts, deterministic turn limits, and an export whose integrity can be checked.
+      </div>
+
+      <div class="grid-3">
+        <div class="card accent"><div class="kpi">GPT-5</div><div class="kpi-label">Fixed OpenRouter model<br /><span class="mono">openai/gpt-5</span></div></div>
+        <div class="card mint"><div class="kpi">Medium</div><div class="kpi-label">Fixed reasoning effort; runtime validation rejects another profile</div></div>
+        <div class="card amber"><div class="kpi">3 turns</div><div class="kpi-label">A hard server-side limit, with no automatic continuation</div></div>
+      </div>
+
+      <div class="rule"></div>
+      <div class="grid-2">
+        <div>
+          <h3>Primary purpose</h3>
+          <ul>
+            <li>Run repeatable web-generation assessments with the same model profile.</li>
+            <li>Keep a reviewer in control between every response.</li>
+            <li>Preserve the exact request and upstream response bodies.</li>
+            <li>Export the final alternating user/assistant conversation as JSON.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Why it matters</h3>
+          <ul>
+            <li>Prompt evolution can be audited instead of reconstructed from memory.</li>
+            <li>Failures do not silently count as completed turns.</li>
+            <li>Concurrent submissions cannot advance the same session twice.</li>
+            <li>Database persistence survives deployments and serverless cold starts.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="rule"></div>
+      <h3>Technology profile</h3>
+      <div>
+        <span class="tag">Next.js 16.4.6</span><span class="tag">React 19.3</span><span class="tag">TypeScript 5</span><span class="tag">Tailwind CSS 4</span><span class="tag">Neon Postgres</span><span class="tag">OpenRouter</span><span class="tag">Zod 4</span><span class="tag">Vitest 3</span><span class="tag">Vercel</span>
+      </div>
+
+      <p class="small" style="margin-top:5mm"><strong>Evidence base:</strong> the current repository, the attached <span class="mono">conversation.json</span>, the public production deployment, and local verification commands. The live deployment and GitHub page both returned HTTP 200 during review.</p>
+      <div class="footer-note">WebGen Lab — Project Explanation</div><div class="page-number">03 / 11</div>
+    </section>
+
+    <section class="page" id="page-4">
+      <a class="back-link" href="#page-2">↑ Contents</a>
+      <div class="eyebrow">02 — System architecture</div>
+      <h2>A thin interactive client over a server-controlled experiment core</h2>
+      <p>The project uses the Next.js App Router as both the user interface host and a backend-for-frontend. Browser code manages interaction; all secrets, model calls, database access, validation, and state transitions remain server-side.</p>
+
+      <div class="architecture">
+        <div class="node"><div class="node-id">01 / CLIENT</div><h3>Experiment workspace</h3><p>Session list, conversation review, prompt entry, progress state, response inspector, and JSON download.</p></div>
+        <div class="arrow">→</div>
+        <div class="node"><div class="node-id">02 / ROUTES</div><h3>Next.js handlers</h3><p>REST-style endpoints create/list sessions, submit turns, load a session, and export a completed conversation.</p></div>
+        <div class="arrow">→</div>
+        <div class="node"><div class="node-id">03 / DOMAIN</div><h3>Conversation services</h3><p>Enforce the three-turn lifecycle, validate assistant completion, coordinate persistence, and map expected errors.</p></div>
+      </div>
+      <div class="architecture arch-lower">
+        <div class="node"><div class="node-id">04 / MODEL</div><h3>OpenRouter</h3><p>Receives the complete message history with fixed model and reasoning settings. Streaming is disabled to preserve a single response artifact.</p></div>
+        <div class="arrow">↔</div>
+        <div class="node"><div class="node-id">05 / DATA</div><h3>Neon Postgres</h3><p>Stores sessions, ordered messages, per-attempt request/response artifacts, and immutable final exports.</p></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card accent">
+          <h3>Client boundary</h3>
+          <p>The interactive workspace is a Client Component because it needs state, event handlers, and browser downloads. It calls internal API routes rather than OpenRouter or Neon directly.</p>
+        </div>
+        <div class="card mint">
+          <h3>Server boundary</h3>
+          <p>Modules that access credentials, the database, or upstream model responses import <code>server-only</code>, creating a build-time guard against accidental client bundling.</p>
+        </div>
+      </div>
+
+      <div class="callout"><strong>Security boundary.</strong> The OpenRouter key is read only from <code>OPENROUTER_API_KEY</code>. It is never embedded in request artifacts and must not use a <code>NEXT_PUBLIC_</code> prefix.</div>
+
+      <h3>Separation of concerns</h3>
+      <p class="small">UI components render state; browser helpers perform HTTP calls; route handlers translate HTTP requests; domain services own lifecycle rules; storage modules write artifacts; OpenRouter modules own configuration, transport, and response validation. This makes the experiment rules testable without a live model or database.</p>
+      <div class="footer-note">Architecture derived from the checked-in implementation</div><div class="page-number">04 / 11</div>
+    </section>
+
+    <section class="page" id="page-5">
+      <a class="back-link" href="#page-2">↑ Contents</a>
+      <div class="eyebrow">03 — Controlled lifecycle</div>
+      <h2>One session, three reviewed turns, no hidden automation</h2>
+      <p>A session progresses through <code>active</code>, <code>processing</code>, and <code>completed</code>. The browser never autonomously submits the next turn; the reviewer reads each response and decides what to ask next.</p>
+
+      <div class="flow">
+        <div class="step"><div class="step-num">1</div><div><h3>Create an isolated session</h3><p>A UUID is generated with the fixed model, medium reasoning, turn limit of three, empty history, and <code>active</code> status.</p></div></div>
+        <div class="step"><div class="step-num">2</div><div><h3>Atomically acquire it</h3><p>A conditional database update changes only an eligible <code>active</code> row to <code>processing</code>. A competing submission receives a conflict instead of running twice.</p></div></div>
+        <div class="step"><div class="step-num">3</div><div><h3>Send complete context</h3><p>The new user message is appended to every prior message. OpenRouter receives that full ordered history, the exact model identifier, medium reasoning, and <code>stream: false</code>.</p></div></div>
+        <div class="step"><div class="step-num">4</div><div><h3>Persist transport evidence</h3><p>The exact serialized request and the original upstream response body, HTTP status, content type, and timestamps are stored as an attempt.</p></div></div>
+        <div class="step"><div class="step-num">5</div><div><h3>Validate the assistant result</h3><p>Only a response with <code>finish_reason: "stop"</code> and non-empty content advances the turn counter.</p></div></div>
+        <div class="step"><div class="step-num">6</div><div><h3>Commit or release</h3><p>Success appends the user/assistant pair and returns to <code>active</code>, or marks turn three <code>completed</code>. Failure releases the processing lock so the session can be retried manually.</p></div></div>
+        <div class="step"><div class="step-num">7</div><div><h3>Export only after integrity checks</h3><p>The completed session must contain exactly six alternating messages. The same JSON is downloaded and stored; a conflicting later export is rejected.</p></div></div>
+      </div>
+
+      <div class="grid-2" style="margin-top:5mm">
+        <div class="card amber"><h3>What does not count as a turn</h3><p>Authentication, network, storage, non-JSON, schema, incomplete-response, or concurrency errors do not increment <code>completedTurns</code>.</p></div>
+        <div class="card accent"><h3>What is intentionally absent</h3><p>No system/developer prompt injection, model fallback, automatic retry, background continuation, or automatic fourth turn is added by the application.</p></div>
+      </div>
+      <div class="footer-note">The lifecycle is enforced on the server, not trusted to UI state</div><div class="page-number">05 / 11</div>
+    </section>
+
+    <section class="page" id="page-6">
+      <a class="back-link" href="#page-2">↑ Contents</a>
+      <div class="eyebrow">04 — Persistence and integrity</div>
+      <h2>Three tables preserve state, evidence, and the final record</h2>
+      <p>The schema is created lazily on the first database operation. A single cached initialization promise prevents repeated setup work within a runtime instance.</p>
+
+      <div class="schema">
+        <div class="table-card"><div class="table-title">webgen_conversation_sessions</div><div class="field"><strong>id</strong> · UUID primary key</div><div class="field"><strong>model / reasoning</strong> · fixed profile</div><div class="field"><strong>status</strong> · lifecycle state</div><div class="field"><strong>turn counters</strong> · bounded progress</div><div class="field"><strong>messages</strong> · ordered JSONB history</div><div class="field"><strong>timestamps</strong> · created / updated</div></div>
+        <div class="table-card"><div class="table-title">webgen_experiment_attempts</div><div class="field"><strong>session_id</strong> · foreign key</div><div class="field"><strong>attempt_number</strong> · ordered per session</div><div class="field"><strong>request_artifact</strong> · exact request metadata/body</div><div class="field"><strong>response_artifact</strong> · original upstream evidence</div><div class="field"><strong>created_at</strong> · database timestamp</div></div>
+        <div class="table-card"><div class="table-title">webgen_conversation_exports</div><div class="field"><strong>session_id</strong> · one export per session</div><div class="field"><strong>content</strong> · exact formatted JSON text</div><div class="field"><strong>created_at</strong> · database timestamp</div><div class="field">Conflict accepted only when content is identical</div></div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <h3>Integrity controls</h3>
+          <ul class="checklist">
+            <li>UUID format is checked before artifact writes.</li>
+            <li>Database rows are parsed back through Zod.</li>
+            <li>Model, reasoning, and turn limit are literal types.</li>
+            <li>Status and counters have SQL constraints.</li>
+            <li>Export requires exactly three user/assistant pairs.</li>
+            <li>Existing export content must match byte-for-byte.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Concurrency controls</h3>
+          <ul class="checklist">
+            <li>Acquisition is a conditional atomic update.</li>
+            <li>Only <code>active</code> sessions below the limit qualify.</li>
+            <li>Completion updates only a <code>processing</code> row.</li>
+            <li>Failures release only an existing processing lock.</li>
+            <li>Attempts are numbered in storage per session.</li>
+            <li>Foreign keys cascade on session deletion.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout"><strong>Reproducibility versus determinism.</strong> The lab preserves configuration and evidence, but it does not make a generative model deterministic: no seed or sampling parameters are set. Re-running the same prompts may still yield different content. The project guarantees traceability of each run, not identical model output.</div>
+
+      <h3>Export contract</h3>
+      <p class="small">The downloadable file contains <code>model</code>, <code>reasoning.effort</code>, and the six chronological messages. Assistant fields returned by OpenRouter—such as reasoning details—are retained because the schema permits additional assistant properties. The attached export demonstrates this behavior.</p>
+      <div class="footer-note">Durability is provided by Neon Postgres rather than process memory</div><div class="page-number">06 / 11</div>
+    </section>
+
+    <section class="page" id="page-7">
+      <a class="back-link" href="#page-2">↑ Contents</a>
+      <div class="eyebrow">05 — Application surface</div>
+      <h2>API routes and server responsibilities</h2>
+      <p>Next.js Route Handlers expose a small internal API. Dynamic session endpoints are rendered on demand, while the main page and static icon are prerendered.</p>
+
+      <div class="card">
+        <div class="endpoint"><span class="method">GET</span><span class="path">/api/sessions</span><span>List stored sessions, newest first.</span></div>
+        <div class="endpoint"><span class="method">POST</span><span class="path">/api/sessions</span><span>Create a new controlled experiment.</span></div>
+        <div class="endpoint"><span class="method">GET</span><span class="path">/api/sessions/:id</span><span>Load one session and its ordered conversation.</span></div>
+        <div class="endpoint"><span class="method">POST</span><span class="path">/api/sessions/:id/messages</span><span>Submit the next human-authored turn.</span></div>
+        <div class="endpoint"><span class="method">GET</span><span class="path">/api/sessions/:id/export</span><span>Download <span class="mono">conversation.json</span> after completion.</span></div>
+        <div class="endpoint"><span class="method">POST</span><span class="path">/api/chat</span><span>Compatibility entry point for message handling.</span></div>
+      </div>
+
+      <div class="grid-2" style="margin-top:5mm">
+        <div class="card accent">
+          <h3>Validation</h3>
+          <p>Zod validates environment variables and OpenRouter response structure. Database rows are also converted through a strict schema before becoming domain objects.</p>
+        </div>
+        <div class="card mint">
+          <h3>Error translation</h3>
+          <p>Domain and upstream failures become explicit HTTP responses: not found, busy, turn limit reached, incomplete response, storage failure, or upstream network/API errors.</p>
+        </div>
+      </div>
+
+      <h3 style="margin-top:6mm">OpenRouter request profile</h3>
+      <div class="command">{
+  "model": "openai/gpt-5",
+  "messages": [/* complete chronological history */],
+  "reasoning": { "effort": "medium" },
+  "stream": false
+}</div>
+
+      <div class="grid-2">
+        <div>
+          <h3>Request evidence</h3>
+          <p class="small">Method, endpoint URL, content type, send timestamp, and the exact JSON body are stored. The authorization header is deliberately not part of the artifact.</p>
+        </div>
+        <div>
+          <h3>Response evidence</h3>
+          <p class="small">Raw body, HTTP status, receive timestamp, content type, and whether parsing as JSON succeeded are stored before application-level validation.</p>
+        </div>
+      </div>
+
+      <div class="callout"><strong>Important distinction.</strong> Attempt artifacts capture transport evidence; session messages capture only accepted user/assistant exchanges. Keeping both lets reviewers inspect failures without corrupting the canonical conversation.</div>
+      <div class="footer-note">The API key never crosses the server/client boundary</div><div class="page-number">07 / 11</div>
+    </section>
+
+    <section class="page" id="page-8">
+      <a class="back-link" href="#page-2">↑ Contents</a>
+      <div class="eyebrow">06 — Attached experiment</div>
+      <h2>The Flowboard conversation is a case study in iterative specification</h2>
+      <p>The attached export contains exactly six chronological messages: three user requests and three assistant responses. Each turn adds constraints while preserving the application concept and technology stack.</p>
+
+      <div class="timeline">
+        <div class="turn"><div class="turn-label">Turn 1 — Foundation</div><h3>Build a functional project-management dashboard</h3><p>The initial request defines Flowboard: responsive Next.js/TypeScript/Tailwind UI, sidebar, statistics, four-column Kanban board, task CRUD, drag-and-drop, details modal, sample data, accessibility, and local persistence.</p></div>
+        <div class="turn"><div class="turn-label">Turn 2 — Discovery and organization</div><h3>Add search, combined filtering, sorting, counters, and persistence</h3><p>The second request adds real-time text search, multi-select filters, overdue filtering, clear-all, priority/due-date/manual sorting, reordering across and within columns, visible/total counters, and persisted filter preferences.</p></div>
+        <div class="turn"><div class="turn-label">Turn 3 — State correctness</div><h3>Make ordering filter-aware and add persistent undo/redo</h3><p>The final request introduces a canonical hidden-task-safe order, exact cross-column behavior under active filters, mutation history, redo invalidation, reload persistence, and keyboard shortcuts that respect native text editing.</p></div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card accent"><h3>What the progression demonstrates</h3><p>The prompts move from feature breadth to interaction composition and finally to difficult state invariants. This is a useful pattern for evaluating whether a model can preserve context while refining a design.</p></div>
+        <div class="card amber"><h3>What the export does not prove</h3><p>The assistant returned source code as text. The export preserves that answer, but WebGen Lab does not compile, execute, visually inspect, or test the generated Flowboard code.</p></div>
+      </div>
+
+      <div class="callout"><strong>Interpretation.</strong> The experiment is evidence of a model-assisted design/code conversation. It should not be presented as evidence that the generated application is correct without a separate extraction, build, test, and review pipeline.</div>
+
+      <h3>Why the JSON is valuable</h3>
+      <p class="small">It records the fixed profile and full conversation in a portable format, including assistant reasoning detail fields when OpenRouter returns them. That makes the run suitable for later qualitative review, rubric scoring, comparison with another model, or transformation into an executable-code evaluation dataset.</p>
+      <div class="footer-note">Case study source: attached conversation.json</div><div class="page-number">08 / 11</div>
+    </section>
+
+    <section class="page" id="page-9">
+      <a class="back-link" href="#page-2">↑ Contents</a>
+      <div class="eyebrow">07 — Interface and user experience</div>
+      <h2>The interface makes experiment state visible</h2>
+      <div class="screenshot-frame"><img src="webgen-lab-ui.png" alt="WebGen Lab production interface showing a completed three-turn experiment" /></div>
+      <p class="caption">Production deployment captured on 26 November 2026. The selected session is complete, all three turn indicators are filled, and export is available.</p>
+
+      <div class="grid-3" style="margin-top:5mm">
+        <div class="card accent"><h3>Experiment rail</h3><p class="small">Creates isolated sessions, lists existing experiments, and displays completion status and turn progress.</p></div>
+        <div class="card mint"><h3>Conversation canvas</h3><p class="small">Separates user requests and assistant responses, keeps manual review central, and shows processing feedback.</p></div>
+        <div class="card amber"><h3>Inspector</h3><p class="small">Surfaces model profile, session identifiers, timestamps, response metadata, and the export action.</p></div>
+      </div>
+
+      <h3 style="margin-top:5mm">Design characteristics</h3>
+      <p class="small">The dark, grid-based visual language resembles a technical laboratory rather than a consumer chat product. Cyan communicates the fixed configuration and active controls; green denotes completion; amber marks processing. Responsive rules collapse the three-column desktop workspace for smaller screens, while form controls expose disabled states during submission or after completion.</p>
+      <div class="footer-note">Live interface: webgen-lab.vercel.app</div><div class="page-number">09 / 11</div>
+    </section>
+
+    <section class="page" id="page-10">
+      <a class="back-link" href="#page-2">↑ Contents</a>
+      <div class="eyebrow">08 — Quality, deployment, and security</div>
+      <h2>The reviewed revision builds cleanly and has focused workflow tests</h2>
+
+      <div class="grid-3">
+        <div class="card mint"><div class="kpi">5 / 5</div><div class="kpi-label">Vitest tests passed across two files</div></div>
+        <div class="card mint"><div class="kpi">0</div><div class="kpi-label">TypeScript and ESLint errors during review</div></div>
+        <div class="card mint"><div class="kpi">OK</div><div class="kpi-label">Optimized Next.js production build</div></div>
+      </div>
+
+      <div class="grid-2" style="margin-top:5mm">
+        <div>
+          <h3>Automated coverage verifies</h3>
+          <ul class="checklist">
+            <li>Exactly three turns complete and a fourth is rejected.</li>
+            <li>Each request includes the full prior history.</li>
+            <li>Export stays locked until completion.</li>
+            <li>Export headers, filename, schema, and trailing newline.</li>
+            <li>Fixed model/reasoning configuration is sent upstream.</li>
+            <li>Missing credentials fail before any network request.</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Production topology</h3>
+          <ul>
+            <li><strong>Vercel:</strong> Next.js hosting and serverless route execution.</li>
+            <li><strong>Neon:</strong> durable PostgreSQL state and artifacts.</li>
+            <li><strong>OpenRouter:</strong> model gateway for GPT-5 completions.</li>
+            <li><strong>GitHub:</strong> versioned source and deployment origin.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="callout"><strong>Current security limitation.</strong> The application has no user authentication. If a deployment is public and has funded OpenRouter credentials, its endpoints can create experiments and consume credits. Vercel Deployment Protection or another access-control layer is therefore operationally important.</div>
+
+      <div class="grid-2">
+        <div class="card amber"><h3>Data sensitivity</h3><p class="small">Prompts, assistant outputs, reasoning details, and raw upstream artifacts may contain private assessment material. Database access, logs, exports, and screenshots should be restricted accordingly.</p></div>
+        <div class="card accent"><h3>Operational controls</h3><p class="small">Use sensitive environment variables, scope credentials by environment, rotate exposed keys, redeploy after configuration changes, and apply spending/rate limits at the gateway or perimeter.</p></div>
+      </div>
+
+      <p class="small" style="margin-top:5mm"><strong>Review commands:</strong> <code>npm test</code>, <code>npm run typecheck</code>, <code>npm run lint</code>, and <code>npm run build</code>. Revision <code>79140a7</code>; 34 TypeScript/TSX source-and-test files and approximately 2,401 lines were counted for orientation, excluding generated and dependency files.</p>
+      <div class="footer-note">Verification performed locally against the reviewed workspace</div><div class="page-number">10 / 11</div>
+    </section>
+
+    <section class="page" id="page-11">
+      <a class="back-link" href="#page-2">↑ Contents</a>
+      <div class="eyebrow">09 — Operation and conclusion</div>
+      <h2>How to run it, and where it can go next</h2>
+
+      <div class="grid-2">
+        <div>
+          <h3>Local setup</h3>
+          <div class="command">npm install
+Copy-Item .env.example .env.local
+npm run dev</div>
+          <p class="small">Required server variables are <code>OPENROUTER_API_KEY</code>, <code>OPENROUTER_MODEL=openai/gpt-5</code>, <code>OPENROUTER_REASONING_EFFORT=medium</code>, and <code>DATABASE_URL</code>. Node.js 20.9 or later is required.</p>
+        </div>
+        <div>
+          <h3>Normal experiment run</h3>
+          <ol>
+            <li>Create a new experiment.</li>
+            <li>Submit the first English request.</li>
+            <li>Review the complete response.</li>
+            <li>Repeat for turns two and three.</li>
+            <li>Export the completed JSON record.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="rule"></div>
+      <h3>Recommended next steps</h3>
+      <div class="grid-2">
+        <div class="card accent"><h3>Protect and govern</h3><p class="small">Add authentication, authorization, rate limits, CSRF-aware mutation protection, audit access to stored artifacts, retention policies, and cost controls.</p></div>
+        <div class="card mint"><h3>Deepen evaluation</h3><p class="small">Extract generated files into an isolated workspace, install dependencies, build, test, capture screenshots, and attach machine-readable quality results to the session.</p></div>
+        <div class="card amber"><h3>Improve reproducibility metadata</h3><p class="small">Record provider routing, full returned model identifier, sampling parameters, application revision, dependency lock hash, and evaluation rubric version.</p></div>
+        <div class="card accent"><h3>Expand comparison</h3><p class="small">Support named experiment profiles and side-by-side runs while keeping every profile explicit, immutable, and separately exportable.</p></div>
+      </div>
+
+      <div class="callout"><strong>Conclusion.</strong> WebGen Lab is a compact but well-structured experiment harness. Its strongest design decision is the separation between accepted conversation state and raw per-attempt evidence. Combined with atomic session acquisition, a hard three-turn boundary, server-only secrets, and idempotent export storage, that separation makes each run understandable and auditable.</div>
+
+      <h3>Project references</h3>
+      <div class="source-row"><strong>Repository</strong><span><a href="https://github.com/ecpieritz/webgen-lab">https://github.com/ecpieritz/webgen-lab</a></span></div>
+      <div class="source-row"><strong>Live deployment</strong><span><a href="https://webgen-lab.vercel.app/">https://webgen-lab.vercel.app/</a></span></div>
+      <div class="source-row"><strong>Experiment data</strong><span>Attached <span class="mono">conversation.json</span>, containing the three-turn Flowboard exchange.</span></div>
+      <div class="source-row"><strong>Technical source</strong><span>Repository README, route handlers, conversation services, OpenRouter client, database schema, storage modules, and automated tests.</span></div>
+
+      <p class="small" style="margin-top:7mm">Prepared in English from the project sources supplied by the repository owner. This document explains the implementation as reviewed; it is not a security certification or a claim that model-generated Flowboard code was executed.</p>
+      <div class="footer-note">End of report</div><div class="page-number">11 / 11</div>
+    </section>
+  </body>
+</html>
